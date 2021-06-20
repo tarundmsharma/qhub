@@ -1,0 +1,50 @@
+name: "Docker Image Build"
+
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - "image/**"
+      - ".github/workflows/image.yaml"
+
+jobs:
+  build:
+    name: QHub Build Dockerfile
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile:
+          - jupyterlab
+          - jupyterhub
+          - dask-worker
+          - dask-gateway
+    steps:
+      - name: 'Checkout Image'
+        uses: actions/checkout@master
+
+      - name: Configure GCP Credentials
+        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          version: '270.0.0'
+      - name: 'Add GCP Credentials'
+        run: |
+          echo "$GOOGLE_CREDENTIALS" > /tmp/service-account.json
+          gcloud auth activate-service-account --key-file=/tmp/service-account.json
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+      - name: Add GCP Docker Credentials
+        run: |
+          gcloud auth configure-docker
+      - name: Docker Build, Tag, and Push Image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          PROJECT_ID: ${{ secrets.PROJECT_ID }}
+        run: |
+          export IMAGE_NAME="gcr.io/$PROJECT_ID/qhub-deployments/qhub-${{ matrix.dockerfile }}"
+          docker build -f image/Dockerfile.${{ matrix.dockerfile }} -t $IMAGE_NAME:$IMAGE_TAG image
+          docker push $IMAGE_NAME:$IMAGE_TAG
+      - name: Docker Logout
+        run: |
+          docker logout
+
