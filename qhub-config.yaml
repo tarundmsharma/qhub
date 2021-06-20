@@ -16,7 +16,7 @@ security:
       - profile
       auth0_subdomain: qhub-dev
   users:
-    tarun:
+    tarun.sharma@elastech.com:
       uid: 1000
       primary_group: admin
       secondary_groups:
